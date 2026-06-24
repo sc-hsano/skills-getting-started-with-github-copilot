@@ -7,7 +7,17 @@ from app import activities
 
 def test_get_activities_returns_all(client):
     # Arrange
-    expected_count = 9
+    expected_activities = {
+        "Chess Club",
+        "Programming Class",
+        "Gym Class",
+        "Soccer Team",
+        "Basketball Club",
+        "Painting Workshop",
+        "Drama Club",
+        "Debate Society",
+        "Math Olympiad",
+    }
 
     # Act
     response = client.get("/activities")
@@ -16,7 +26,7 @@ def test_get_activities_returns_all(client):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, dict)
-    assert len(data) == expected_count
+    assert expected_activities.issubset(data.keys())
 
 
 # ---------------------------------------------------------------------------
