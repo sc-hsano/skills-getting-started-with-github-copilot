@@ -4,27 +4,59 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch activities: ${response.status} ${response.statusText}`);
+      }
       const activities = await response.json();
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      const previouslySelected = activitySelect.value;
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
         activityCard.className = "activity-card";
 
-        const spotsLeft = details.max_participants - details.participants.length;
+        const participants = details.participants || [];
+        const spotsLeft = details.max_participants - participants.length;
+        const participantsListItems = participants.length
+          ? participants
+              .map(
+                (participant) =>
+                  `<li>
+                    <span>${escapeHtml(participant)}</span>
+                    <button type="button" class="delete-participant" data-activity="${escapeHtml(name)}" data-email="${escapeHtml(participant)}" title="Unregister ${escapeHtml(participant)} from ${escapeHtml(name)}" aria-label="Unregister ${escapeHtml(participant)} from ${escapeHtml(name)}">&#x1F5D1;</button>
+                  </li>`
+              )
+              .join("")
+          : '<li class="participant-empty">No participants yet</li>';
 
         activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
+          <h4>${escapeHtml(name)}</h4>
+          <p>${escapeHtml(details.description)}</p>
+          <p><strong>Schedule:</strong> ${escapeHtml(details.schedule)}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants-section">
+            <p class="participants-title"><strong>Participants (${participants.length})</strong></p>
+            <ul class="participants-list">
+              ${participantsListItems}
+            </ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -34,6 +66,32 @@ document.addEventListener("DOMContentLoaded", () => {
         option.value = name;
         option.textContent = name;
         activitySelect.appendChild(option);
+      });
+
+      if (previouslySelected && activities[previouslySelected]) {
+        activitySelect.value = previouslySelected;
+      }
+
+      // Attach delete handlers
+      activitiesList.querySelectorAll(".delete-participant").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const activity = btn.dataset.activity;
+          const email = btn.dataset.email;
+          try {
+            const response = await fetch(
+              `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+              { method: "DELETE" }
+            );
+            if (response.ok) {
+              await fetchActivities();
+            } else {
+              const result = await response.json();
+              console.error("Error unregistering:", result.detail);
+            }
+          } catch (error) {
+            console.error("Error unregistering participant:", error);
+          }
+        });
       });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
@@ -61,6 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (response.ok) {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
+        await fetchActivities();
         signupForm.reset();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
