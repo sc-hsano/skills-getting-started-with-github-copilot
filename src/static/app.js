@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 (participant) =>
                   `<li>
                     <span>${escapeHtml(participant)}</span>
-                    <button class="delete-participant" data-activity="${escapeHtml(name)}" data-email="${escapeHtml(participant)}" title="Unregister participant">&#x1F5D1;</button>
+                    <button type="button" class="delete-participant" data-activity="${escapeHtml(name)}" data-email="${escapeHtml(participant)}" title="Unregister participant" aria-label="Unregister participant">&#x1F5D1;</button>
                   </li>`
               )
               .join("")
