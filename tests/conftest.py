@@ -9,7 +9,8 @@ _initial_activities = copy.deepcopy(original_activities)
 
 @pytest.fixture
 def client():
-    return TestClient(app, follow_redirects=False)
+    with TestClient(app, follow_redirects=False) as client:
+        yield client
 
 
 @pytest.fixture(autouse=True)
